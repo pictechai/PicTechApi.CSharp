@@ -1,0 +1,5 @@
+/frontened/node_modules/*
+/.idea/*
+/bin/Debug/*
+/obj/*
+/wwwroot/*
