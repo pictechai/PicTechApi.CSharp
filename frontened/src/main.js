@@ -17,7 +17,9 @@ const userApiConfig = {
   URL_API: '/api/translate/url',
   RESULT_API: '/api/translate/result',
   UPLOAD_EXPORT_IMG_API: '/api/translate/uploadExportedImage',
-  SAVE_API: '/api/translate/save'
+  SAVE_API: '/api/translate/save',
+  IO_IN_PAINT_API: '/api/translate/iopaint',
+  UPLOAD_IO_IN_PAINT_IMG_API: '/api/translate/uploadIoInpaintImage',
 };
 
 // 4. 使用 Vue.use() 来安装插件

@@ -23,6 +23,8 @@ namespace PicTechApi.CSharp.Controllers
     public class UploadedImageRequest{ [JsonPropertyName("requestId")] public string? RequestId { get; set; } [JsonPropertyName("filename")] public string? Filename { get; set; } [JsonPropertyName("imageBase64")] public string? ImageBase64 { get; set; } }
     public class TranslationData{ [JsonPropertyName("FinalImageUrl")] public string? FinalImageUrl { get; set; } [JsonPropertyName("InPaintingUrl")] public string? InPaintingUrl { get; set; } [JsonPropertyName("SourceUrl")] public string? SourceUrl { get; set; } [JsonPropertyName("TemplateJson")] public string? TemplateJson { get; set; } }
     public class SaveStateRequest{ [JsonPropertyName("RequestId")] public string? RequestId { get; set; } [JsonPropertyName("Code")] public int Code { get; set; } [JsonPropertyName("Message")] public string? Message { get; set; } [JsonPropertyName("Data")] public TranslationData? Data { get; set; } }
+    public class IopaintRequest { [JsonPropertyName("image")] public string Image { get; set; } [JsonPropertyName("mask")] public string Mask { get; set; } }
+    public class UploadIoInpaintImageRequest { [JsonPropertyName("imageData")] public string ImageData { get; set; } }
     #endregion
 
     /// <summary>
@@ -305,6 +307,111 @@ namespace PicTechApi.CSharp.Controllers
                 _logger.LogError(ex, "序列化响应数据以进行日志记录时失败。");
             }
         }
+
+  #region 【新增接口】
+
+        /// <summary>
+        /// 【新增接口】代理图像擦除 (Inpainting) 请求
+        /// </summary>
+        [HttpPost("iopaint")]
+        public async Task<IActionResult> PerformInpainting([FromBody] IopaintRequest request)
+        {
+            try
+            {
+                var newImageBase64 = await _translationService.IopaintAsync(request.Image, request.Mask);
+
+                // 5. 将新的 Base64 字符串返回给前端
+                return Ok(new { newImageBase64 });
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Inpainting process failed");
+                // 返回与Java版本一致的错误结构
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = $"图像擦除处理失败: {e.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// 【重构接口】接收 Inpaint 后的 Base64 图片，保存到项目静态资源目录并返回可访问 URL
+        /// </summary>
+        [HttpPost("uploadIoInpaintImage")]
+        public async Task<IActionResult> UploadIoInpaintImage([FromBody] UploadIoInpaintImageRequest request)
+        {
+            // 1. 参数校验
+            if (string.IsNullOrWhiteSpace(request.ImageData))
+            {
+                return BadRequest(CreateErrorResponse("图片数据(imageData)不能为空", StatusCodes.Status400BadRequest));
+            }
+
+            try
+            {
+                var finalUrl = await _translationService.UploadIoInpaintImageAsync(request.ImageData);
+
+             // 6. 返回标准格式的成功响应
+                var successResponse = CreateSuccessResponse(finalUrl);
+
+                // ===================== 【新增的日志记录】 =====================
+                // 在返回之前，将要发送的对象序列化为JSON字符串并打印到日志
+                _logger.LogInformation(
+                    "准备返回成功响应给客户端，内容: {Response}",
+                    JsonConvert.SerializeObject(successResponse, Formatting.Indented) // 使用 Indented 格式化输出，更易读
+                );
+                // ===================== 【日志记录结束】 =====================
+
+                return Ok(successResponse);
+            }
+            catch (ArgumentException e) // 由服务层抛出的 Base64 格式错误
+            {
+                _logger.LogError(e, "Base64 解码失败。");
+                return BadRequest(CreateErrorResponse("无效的Base64数据", StatusCodes.Status400BadRequest));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "文件保存时发生未知异常。");
+                return StatusCode(StatusCodes.Status500InternalServerError, CreateErrorResponse("文件保存失败，服务器IO错误"));
+            }
+        }
+
+        #endregion
+
+        // ... (私有辅助方法 ExtractAndCleanUrlValue, LogResponseData 保持不变) ...
+
+        #region 辅助方法 (用于创建标准响应体)
+
+        /// <summary>
+        /// 创建一个标准的成功响应体
+        /// </summary>
+        private object CreateSuccessResponse(string url)
+		{
+		    // 【修改】使用 Dictionary 来精确控制键名
+		    var data = new Dictionary<string, string>
+		    {
+		        { "Url", url }
+		    };
+            var responseBody = new Dictionary<string, object>
+            {
+                { "Code", 200 },
+                { "Message", "文件上传成功" },
+                { "Data", data }
+            };
+		    return responseBody;
+		}
+
+        /// <summary>
+        /// 创建一个标准的错误响应体
+        /// </summary>
+        private object CreateErrorResponse(string errorMessage, int statusCode = StatusCodes.Status500InternalServerError)
+        {
+            var responseBody = new Dictionary<string, object>
+            {
+                { "Code", statusCode },
+                { "Message", errorMessage },
+                { "Data", (object)null }
+            };
+		    return responseBody;
+        }
+
+        #endregion
 
     }
 }
