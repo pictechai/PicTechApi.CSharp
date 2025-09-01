@@ -115,11 +115,13 @@ cd PicTechApi.CSharp
    编辑 `src/main.js`，确保 `userApiConfig` 中的 API 地址与后端一致：
    ```javascript
    const userApiConfig = {
-     UPLOAD_API: '/api/translate/upload',
-     URL_API: '/api/translate/url',
-     RESULT_API: '/api/translate/result',
-     UPLOAD_EXPORT_IMG_API: '/api/translate/uploadExportedImage',
-     SAVE_API: '/api/translate/save'
+     UPLOAD_API: '/api/translate/upload',处理文件上传的翻译任务。
+     URL_API: '/api/translate/url',处理基于 URL 的翻译任务。
+     RESULT_API: '/api/translate/result',查询翻译任务的处理结果。
+     UPLOAD_EXPORT_IMG_API: '/api/translate/uploadExportedImage',**接收并保存前端导出的最终图片，建议定期清理**。
+     SAVE_API: '/api/translate/save',保存编辑器当前画布状态。
+     IO_IN_PAINT_API: '/api/translate/iopaint', 请求擦除服务，每5次请求消耗一个积分。
+     UPLOAD_IO_IN_PAINT_IMG_API: '/api/translate/uploadIoInpaintImage', 保存图片中间结果，建议定期清理
    };
    ```
 
@@ -291,9 +293,3 @@ cd PicTechApi.CSharp
 ## 贡献
 
 欢迎提交 Issue 或 Pull Request！请确保代码风格与现有代码一致，并附上必要的测试。
-
----
-
-## 许可证
-
-本项目使用 MIT 许可证。详情见 `LICENSE` 文件（请自行添加）。
